@@ -117,12 +117,45 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased font-mulish;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-mulish;
+  }
+
+  h1 {
+    @apply font-extrabold;
+  }
+
+  h2 {
+    @apply font-bold;
+  }
+
+  h3 {
+    @apply font-semibold;
+  }
+
+  h4,
+  h5,
+  h6 {
+    @apply font-medium;
+  }
+
+  button,
+  a {
+    @apply cursor-pointer font-mulish;
   }
 }
 
 @layer components {
+
   /* Modern glass effect for cards */
   .glass-card {
     @apply bg-card/80 backdrop-blur-xl border border-border/50;

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Image from "next/image";
 import { Home, Server, CreditCard, MessageSquare, Settings, LogOut, PanelLeftClose, PanelLeft, ChevronRight } from "lucide-react";
 import { NavLink } from "@/app/components/NavLink";
 import {
@@ -68,7 +69,7 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar 
+    <Sidebar
       className={cn(
         "border-r border-sidebar-border bg-sidebar transition-all duration-300 ease-in-out",
         isCollapsed ? "w-16" : "w-64"
@@ -82,14 +83,14 @@ export function AppSidebar() {
           isCollapsed ? "justify-center" : "justify-between"
         )}>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
-              <span className="text-primary-foreground font-bold text-sm">CN</span>
+            <div className="w-full rounded-lg flex items-center justify-center shrink-0">
+              <Image src="/logo/cantech-logo.svg" alt="Logo" width={130} height={55} />
             </div>
-            {showLabels && (
+            {/* {showLabels && (
               <span className="font-semibold text-sidebar-foreground whitespace-nowrap animate-fade-in">
                 Cantech Networks
               </span>
-            )}
+            )} */}
           </div>
           {showLabels && (
             <Tooltip>
@@ -142,8 +143,8 @@ export function AppSidebar() {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <SidebarMenuButton asChild>
-                        <NavLink 
-                          href={item.url} 
+                        <NavLink
+                          href={item.url}
                           className={cn(
                             "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
                             "hover:bg-sidebar-accent group",
@@ -177,7 +178,7 @@ export function AppSidebar() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <SidebarMenuButton asChild>
-                  <button 
+                  <button
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left",
                       "hover:bg-sidebar-accent text-sidebar-foreground/70 hover:text-sidebar-foreground group",
