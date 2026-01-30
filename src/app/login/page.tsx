@@ -24,10 +24,33 @@ export default function App() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true);
-        // Simulate auth delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        setIsLoading(false);
+
+        try {
+            setIsLoading(true);
+
+            const res = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data = await res.json();
+
+            setIsLoading(false);
+
+            if (!res.ok) {
+                alert(data.error || "Login failed");
+                return;
+            }
+
+            // Success → go to dashboard
+            window.location.href = "/";
+
+        } catch (err) {
+            console.error("Login error:", err);
+            setIsLoading(false);
+            alert("Something went wrong. Please try again.");
+        }
     };
 
     const services = [

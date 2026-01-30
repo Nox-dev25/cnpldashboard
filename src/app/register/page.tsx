@@ -227,17 +227,53 @@ export default function RegisterPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        // 1. Validate form
         if (!validateForm()) return;
+
+        // 2. Check OTP
         if (!otpVerified) {
-            setErrors(prev => ({ ...prev, phone: 'Please verify your phone number' }));
+            setErrors(prev => ({
+                ...prev,
+                phone: "Please verify your phone number",
+            }));
             return;
         }
 
-        setIsLoading(true);
-        // Simulate registration API call
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setIsLoading(false);
-        // Redirect to dashboard or login
+        try {
+            setIsLoading(true);
+
+            // 3. Call register API
+            const res = await fetch("/api/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    firstName,
+                    lastName,
+                    phone,
+                    countryCode: selectedCountry.code,
+                    email,
+                    password,
+                }),
+            });
+
+            const data = await res.json();
+
+            setIsLoading(false);
+
+            // 4. Handle error
+            if (!res.ok) {
+                alert(data.error || "Registration failed");
+                return;
+            }
+
+            // 5. Success → redirect
+            window.location.href = "/login";
+
+        } catch (err) {
+            console.error("Registration error:", err);
+            setIsLoading(false);
+            alert("Something went wrong. Please try again.");
+        }
     };
 
     const services = [

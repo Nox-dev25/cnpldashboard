@@ -10,9 +10,29 @@ import { toast } from "sonner";
 export function UserDropdown() {
   const router = useRouter();
 
-  const handleLogout = () => {
-    toast.info("Logging out...");
-    // TODO: add logout logic
+  const handleLogout = async () => {
+    try {
+      toast.info("Logging out...");
+
+      const res = await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        throw new Error("Logout failed");
+      }
+
+      toast.success("Logged out successfully");
+
+      // Redirect to login page
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 800);
+
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast.error("Failed to logout. Please try again.");
+    }
   };
 
   return (
