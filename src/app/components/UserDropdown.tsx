@@ -1,39 +1,60 @@
 "use client";
 
-import { User, Lock, Shield, LogOut } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CircleUser, Users, Lock, Shield, LogOut } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, } from "@/app/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/app/components/ui/avatar";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+type User = {
+  firstName: string;
+  lastName: string;
+  email: string;
+};
+
 export function UserDropdown() {
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+
+  // Fetch logged-in user
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("/api/auth/user");
+        if (!res.ok) throw new Error("Unauthorized");
+        const data = await res.json();
+        setUser(data);
+      } catch {
+        // silently fail — middleware will redirect if needed
+      }
+    };
+
+    fetchUser();
+  }, []);
 
   const handleLogout = async () => {
     try {
       toast.info("Logging out...");
 
-      const res = await fetch("/api/auth/logout", {
-        method: "POST",
-      });
+      const res = await fetch("/api/auth/logout", { method: "POST" });
+      if (!res.ok) throw new Error();
 
-      if (!res.ok) {
-        throw new Error("Logout failed");
-      }
+      toast.success("Logged out");
 
-      toast.success("Logged out successfully");
-
-      // Redirect to login page
       setTimeout(() => {
         window.location.href = "/login";
       }, 800);
-
-    } catch (error) {
-      console.error("Logout error:", error);
-      toast.error("Failed to logout. Please try again.");
+    } catch {
+      toast.error("Logout failed");
     }
   };
+
+  const initials =
+    user?.firstName && user?.lastName
+      ? `${user.firstName[0]}${user.lastName[0]}`
+      : "U";
 
   return (
     <DropdownMenu>
@@ -41,67 +62,54 @@ export function UserDropdown() {
         <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-              UD
+              {initials.toUpperCase()}
             </AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent
-        align="end"
-        className="w-56 bg-popover border-border z-50"
-      >
+      <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">Umang Detruja</p>
+            <p className="text-sm font-medium leading-none">
+              {user ? `${user.firstName} ${user.lastName}` : "Loading..."}
+            </p>
             <p className="text-xs leading-none text-muted-foreground">
-              umang.cantech@gmail.com
+              {user?.email ?? ""}
             </p>
           </div>
         </DropdownMenuLabel>
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem
-          onClick={() => router.push("/profile")}
-          className="cursor-pointer"
-        >
-          <User className="mr-2 h-4 w-4" />
-          <span>Your Profile</span>
+        <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/profile")}>
+          <CircleUser className="mr-2 h-4 w-4" />
+          Your Profile
         </DropdownMenuItem>
 
-        <DropdownMenuItem
-          onClick={() => router.push("/users")}
-          className="cursor-pointer"
-        >
-          <User className="mr-2 h-4 w-4" />
-          <span>User Management</span>
+        <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/users")}>
+          <Users className="mr-2 h-4 w-4" />
+          User Management
         </DropdownMenuItem>
 
-        <DropdownMenuItem
-          onClick={() => router.push("/change-password")}
-          className="cursor-pointer"
-        >
+        <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/change-password")}>
           <Lock className="mr-2 h-4 w-4" />
-          <span>Change Password</span>
+          Change Password
         </DropdownMenuItem>
 
-        <DropdownMenuItem
-          onClick={() => router.push("/security")}
-          className="cursor-pointer"
-        >
+        <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/security")}>
           <Shield className="mr-2 h-4 w-4" />
-          <span>Security Settings</span>
+          Security Settings
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 
         <DropdownMenuItem
           onClick={handleLogout}
-          className="cursor-pointer text-destructive focus:text-destructive"
+          className="text-destructive cursor-pointer focus:text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Logout</span>
+          Logout
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

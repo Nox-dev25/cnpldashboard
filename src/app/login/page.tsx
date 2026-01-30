@@ -10,11 +10,16 @@ import {
     Star,
     CheckCircle2,
     ArrowRight,
-    Github,
-    Chrome,
     Eye,
-    EyeOff
+    EyeOff,
+    AlertCircle
 } from 'lucide-react';
+import { toast } from "sonner";
+
+type FormErrors = {
+    email?: string;
+    password?: string;
+};
 
 export default function App() {
     const [isLoading, setIsLoading] = useState(false);
@@ -22,8 +27,19 @@ export default function App() {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
+    const [errors, setErrors] = useState<FormErrors>({});
+    const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({});
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        const isValid = validateForm();
+        setTouched({ email: true, password: true });
+
+        if (!isValid) {
+            toast.error("Please fix the errors before continuing");
+            return;
+        }
 
         try {
             setIsLoading(true);
@@ -35,22 +51,47 @@ export default function App() {
             });
 
             const data = await res.json();
-
             setIsLoading(false);
 
             if (!res.ok) {
-                alert(data.error || "Login failed");
+                toast.error(data.error || "Invalid email or password");
                 return;
             }
 
-            // Success → go to dashboard
-            window.location.href = "/";
+            toast.success("Welcome back 👋");
+            window.location.href = "/dashboard";
 
         } catch (err) {
             console.error("Login error:", err);
             setIsLoading(false);
-            alert("Something went wrong. Please try again.");
+            toast.error("Something went wrong. Please try again.");
         }
+    };
+
+    // Validation functions
+    const validateEmail = (value: string): string | undefined => {
+        if (!value.trim()) return 'Email is required';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Enter a valid email address';
+        return undefined;
+    };
+    const validatePassword = (value: string): string | undefined => {
+        if (!value.trim()) return 'Password is required';
+        if (value.length < 8) return 'Password must be at least 8 characters';
+        return undefined;
+    };
+
+    const handleBlur = (field: 'email' | 'password') => {
+        setTouched(prev => ({ ...prev, [field]: true }));
+        validateForm();
+    };
+
+    const validateForm = (): boolean => {
+        const newErrors: FormErrors = {
+            email: validateEmail(email),
+            password: validatePassword(password),
+        };
+        setErrors(newErrors);
+        return !Object.values(newErrors).some(error => error !== undefined);
     };
 
     const services = [
@@ -155,11 +196,19 @@ export default function App() {
                                 id="email"
                                 type="email"
                                 required
-                                className="w-full px-4 py-4 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all"
+                                className={`w-full px-4 py-4 bg-zinc-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all ${touched.email && errors.email ? 'border-red-500' : 'border-zinc-200'
+                                    }`}
                                 placeholder="name@company.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                onBlur={() => handleBlur('email')}
                             />
+                            {touched.email && errors.email && (
+                                <p className="text-xs text-red-500 flex items-center gap-1">
+                                    <AlertCircle className="w-3 h-3" />
+                                    {errors.email}
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-2">
@@ -172,10 +221,14 @@ export default function App() {
                                     id="password"
                                     type={showPassword ? "text" : "password"}
                                     required
-                                    className="w-full px-4 py-4 pr-12 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all"
+                                    className={`w-full px-4 py-4 pr-12 bg-zinc-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all ${touched.password && errors.password
+                                        ? 'border-red-500'
+                                        : 'border-zinc-200'
+                                        }`}
                                     placeholder="••••••••"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
+                                    onBlur={() => handleBlur('password')}
                                 />
                                 <button
                                     type="button"
@@ -186,6 +239,12 @@ export default function App() {
                                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
                             </div>
+                            {touched.password && errors.password && (
+                                <p className="text-xs text-red-500 flex items-center gap-1">
+                                    <AlertCircle className="w-3 h-3" />
+                                    {errors.password}
+                                </p>
+                            )}
                         </div>
 
                         <div className="flex items-center gap-2">

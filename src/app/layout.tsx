@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Mulish } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 import { ThemeProvider } from "@/app/components/ThemeProvider";
@@ -21,8 +22,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body className={mulish.variable}>
+        <Toaster
+          position="top-right"
+          richColors
+          closeButton
+          duration={4000}
+          expand
+          visibleToasts={3}
+        />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
