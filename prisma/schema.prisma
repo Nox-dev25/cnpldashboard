@@ -26,7 +26,8 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  sessions Session[]
+  sessions         Session[]
+  kycVerifications KycVerification[]
 
   @@map("users")
 }
@@ -40,4 +41,37 @@ model Session {
   user User @relation(fields: [userId], references: [id])
 
   @@map("sessions")
+}
+
+model SuperAdmin {
+  id                 Int       @id @default(autoincrement())
+  full_name          String
+  email              String    @unique
+  mobile             String?   @unique
+  password           String
+  status             Boolean   @default(true)
+
+  last_login_at      DateTime?
+  last_login_ip      String?
+  two_factor_enabled Boolean   @default(false)
+
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+}
+
+model KycVerification {
+  id           Int       @id @default(autoincrement())
+  userId       Int
+  documentType String
+  status       String    @default("pending") // pending, approved, rejected
+  submittedAt  DateTime  @default(now())
+  approvedAt   DateTime?
+  approvedBy   String?
+  rejectedAt   DateTime?
+  rejectedBy   String?
+  rejectReason String?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("kyc_verifications")
 }
