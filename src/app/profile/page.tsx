@@ -122,7 +122,11 @@ export default function Profile() {
                                 </div>
 
                                 <div className="flex gap-4 pt-4">
-                                    <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                                    <Button
+                                        type="submit"
+                                        disabled
+                                        className="bg-primary disabled:bg-primary/90 cursor-not-allowed text-primary-foreground hover:bg-primary/90"
+                                    >
                                         Save Changes
                                     </Button>
                                     <Button

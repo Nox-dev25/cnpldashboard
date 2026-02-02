@@ -1,3 +1,4 @@
+import { useRouter } from "next/navigation";
 import { Shield } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { toast } from "sonner";
@@ -7,8 +8,10 @@ interface KYCBannerProps {
 }
 
 export function KYCBanner({ userName = "User" }: KYCBannerProps) {
+  const router = useRouter();
   const handleCompleteKYC = () => {
     toast.info("KYC validation process will be initiated");
+    router.push("/onboarding");
   };
 
   return (
@@ -30,8 +33,8 @@ export function KYCBanner({ userName = "User" }: KYCBannerProps) {
             <p className="text-sm text-muted-foreground">Start your cloud journey by completing your KYC</p>
           </div>
         </div>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={handleCompleteKYC}
           className="shrink-0"
         >

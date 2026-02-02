@@ -16,6 +16,13 @@ import {
     X,
     AlertCircle
 } from 'lucide-react';
+import {
+    signInWithPhoneNumber,
+    RecaptchaVerifier,
+    ConfirmationResult
+} from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { toast } from "sonner";
 
 // Country codes data with flags (emoji)
 const countryCodes = [
@@ -90,21 +97,50 @@ export default function RegisterPage() {
     const [errors, setErrors] = useState<FormErrors>({});
     const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-    // OTP States
-    const [otpSent, setOtpSent] = useState(false);
-    const [otp, setOtp] = useState(['', '', '', '', '', '']);
-    const [otpVerified, setOtpVerified] = useState(false);
-    const [otpTimer, setOtpTimer] = useState(0);
-    const [sendingOtp, setSendingOtp] = useState(false);
-    const [verifyingOtp, setVerifyingOtp] = useState(false);
+    const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+
+    // Phone OTP States
+    const [phoneOtpSent, setPhoneOtpSent] = useState(false);
+    const [phoneOtp, setPhoneOtp] = useState<string[]>(['', '', '', '', '', '']);
+    const [phoneOtpVerified, setPhoneOtpVerified] = useState(false);
+    const [phoneOtpTimer, setPhoneOtpTimer] = useState(0);
+    const [sendingPhoneOtp, setSendingPhoneOtp] = useState(false);
+    const [verifyingPhoneOtp, setVerifyingPhoneOtp] = useState(false);
+
+    // Email OTP States
+    const [emailOtpSent, setEmailOtpSent] = useState(false);
+    const [emailOtp, setEmailOtp] = useState<string[]>(['', '', '', '', '', '']);
+    const [emailOtpVerified, setEmailOtpVerified] = useState(false);
+    const [emailOtpTimer, setEmailOtpTimer] = useState(0);
+    const [sendingEmailOtp, setSendingEmailOtp] = useState(false);
+    const [verifyingEmailOtp, setVerifyingEmailOtp] = useState(false);
 
     // OTP Timer
     useEffect(() => {
-        if (otpTimer > 0) {
-            const timer = setTimeout(() => setOtpTimer(otpTimer - 1), 1000);
+        if (phoneOtpTimer > 0) {
+            const timer = setTimeout(() => setPhoneOtpTimer(t => t - 1), 1000);
             return () => clearTimeout(timer);
         }
-    }, [otpTimer]);
+    }, [phoneOtpTimer]);
+
+    useEffect(() => {
+        if (typeof window !== "undefined" && !window.recaptchaVerifier) {
+            window.recaptchaVerifier = new RecaptchaVerifier(
+                auth,
+                "recaptcha-container",
+                {
+                    size: "invisible",
+                }
+            );
+        }
+    }, []);
+
+    useEffect(() => {
+        if (emailOtpTimer > 0) {
+            const t = setTimeout(() => setEmailOtpTimer(p => p - 1), 1000);
+            return () => clearTimeout(t);
+        }
+    }, [emailOtpTimer]);
 
     // Validation functions
     const validateFirstName = (value: string): string | undefined => {
@@ -169,58 +205,109 @@ export default function RegisterPage() {
         return !Object.values(newErrors).some(error => error !== undefined);
     };
 
-    // Send OTP
-    const handleSendOtp = async () => {
-        const phoneError = validatePhone(phone);
-        if (phoneError) {
-            setErrors(prev => ({ ...prev, phone: phoneError }));
-            setTouched(prev => ({ ...prev, phone: true }));
+    // Send Phone OTP
+    const handleSendPhoneOtp = async () => {
+        try {
+            setSendingPhoneOtp(true);
+
+            const fullPhone = `${selectedCountry.code}${phone}`;
+            const appVerifier = window.recaptchaVerifier!;
+
+            const result = await signInWithPhoneNumber(
+                auth,
+                fullPhone,
+                appVerifier
+            );
+
+            setConfirmationResult(result);
+            setPhoneOtpSent(true);
+            setPhoneOtpTimer(60);
+            toast.success("OTP sent to your phone");
+
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to send OTP");
+        } finally {
+            setSendingPhoneOtp(false);
+        }
+    };
+
+
+    // Send Email OTP
+    const handleSendEmailOtp = async () => {
+        const emailError = validateEmail(email);
+        if (emailError) {
+            setErrors(p => ({ ...p, email: emailError }));
+            setTouched(p => ({ ...p, email: true }));
             return;
         }
 
-        setSendingOtp(true);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        setSendingOtp(false);
-        setOtpSent(true);
-        setOtpTimer(60);
-        setOtp(['', '', '', '', '', '']);
+        setSendingEmailOtp(true);
+        await new Promise(r => setTimeout(r, 1500)); // API
+        setSendingEmailOtp(false);
+
+        setEmailOtpSent(true);
+        setEmailOtpTimer(60);
+        setEmailOtp(['', '', '', '', '', '']);
     };
 
     // Handle OTP input
-    const handleOtpChange = (index: number, value: string) => {
+    const handleOtpChange = (
+        index: number,
+        value: string,
+        otp: string[],
+        setOtp: React.Dispatch<React.SetStateAction<string[]>>
+    ) => {
         if (!/^\d*$/.test(value)) return;
 
-        const newOtp = [...otp];
-        newOtp[index] = value.slice(-1);
-        setOtp(newOtp);
+        const next = [...otp];
+        next[index] = value.slice(-1);
+        setOtp(next);
 
-        // Auto-focus next input
         if (value && index < 5) {
-            const nextInput = document.getElementById(`otp-${index + 1}`);
-            nextInput?.focus();
+            document.getElementById(`otp-${index + 1}`)?.focus();
         }
     };
 
     // Handle OTP key down for backspace
     const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
-        if (e.key === 'Backspace' && !otp[index] && index > 0) {
-            const prevInput = document.getElementById(`otp-${index - 1}`);
-            prevInput?.focus();
+        if (e.key === 'Backspace' && index > 0) {
+            document.getElementById(`otp-${index - 1}`)?.focus();
         }
     };
 
-    // Verify OTP
-    const handleVerifyOtp = async () => {
-        const otpValue = otp.join('');
-        if (otpValue.length !== 6) return;
+    // Verify Phone OTP
+    const handleVerifyPhoneOtp = async () => {
+        try {
+            if (!confirmationResult) return;
 
-        setVerifyingOtp(true);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        setVerifyingOtp(false);
-        setOtpVerified(true);
-        setOtpSent(false);
+            setVerifyingPhoneOtp(true);
+
+            const code = phoneOtp.join("");
+            await confirmationResult.confirm(code);
+
+            setPhoneOtpVerified(true);
+            setPhoneOtpSent(false);
+            toast.success("Phone number verified");
+
+        } catch (error) {
+            console.error(error);
+            toast.error("Invalid OTP");
+        } finally {
+            setVerifyingPhoneOtp(false);
+        }
+    };
+
+    // Verify Phone OTP
+    const handleVerifyEmailOtp = async () => {
+        if (emailOtp.join('').length !== 6) return;
+
+        setVerifyingEmailOtp(true);
+        await new Promise(r => setTimeout(r, 1500)); // API
+        setVerifyingEmailOtp(false);
+
+        setEmailOtpVerified(true);
+        setEmailOtpSent(false);
     };
 
     // Handle form submission
@@ -231,10 +318,18 @@ export default function RegisterPage() {
         if (!validateForm()) return;
 
         // 2. Check OTP
-        if (!otpVerified) {
+        if (!phoneOtpVerified) {
             setErrors(prev => ({
                 ...prev,
                 phone: "Please verify your phone number",
+            }));
+            return;
+        }
+
+        if (!emailOtpVerified) {
+            setErrors(prev => ({
+                ...prev,
+                email: "Please verify your email address",
             }));
             return;
         }
@@ -482,38 +577,38 @@ export default function RegisterPage() {
                                         id="phone"
                                         type="tel"
                                         className={`w-full px-4 py-3.5 bg-zinc-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all ${touched.phone && errors.phone ? 'border-red-500' : 'border-zinc-200'
-                                            } ${otpVerified ? 'pr-10' : ''}`}
+                                            } ${phoneOtpVerified ? 'pr-10' : ''}`}
                                         placeholder="Enter your phone number"
                                         value={phone}
                                         onChange={(e) => {
                                             setPhone(e.target.value.replace(/\D/g, '').slice(0, 10));
-                                            if (otpVerified) {
-                                                setOtpVerified(false);
-                                                setOtpSent(false);
+                                            if (phoneOtpVerified) {
+                                                setPhoneOtpVerified(false);
+                                                setPhoneOtpSent(false);
                                             }
                                         }}
                                         onBlur={() => handleBlur('phone')}
-                                        disabled={otpVerified}
+                                        disabled={phoneOtpVerified}
                                     />
-                                    {otpVerified && (
+                                    {phoneOtpVerified && (
                                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
                                             <Check className="w-5 h-5 text-green-500" />
                                         </div>
                                     )}
 
                                     {/* Verify Button */}
-                                    {!otpVerified && (
+                                    {!phoneOtpVerified && (
                                         <button
                                             type="button"
-                                            onClick={handleSendOtp}
-                                            disabled={sendingOtp || (otpSent && otpTimer > 0)}
+                                            onClick={handleSendPhoneOtp}
+                                            disabled={sendingPhoneOtp || (phoneOtpSent && phoneOtpTimer > 0)}
                                             className="absolute right-3 top-1/2 -translate-y-1/2 px-4 py-3.5 text-xs font-bold uppercase tracking-wider text-black hover:text-black transition-colors whitespace-nowrap disabled:opacity-50"
                                         >
-                                            {sendingOtp ? (
+                                            {sendingPhoneOtp ? (
                                                 <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                                            ) : otpSent && otpTimer > 0 ? (
-                                                `Resend (${otpTimer}s)`
-                                            ) : otpSent ? (
+                                            ) : phoneOtpSent && phoneOtpTimer > 0 ? (
+                                                `Resend (${phoneOtpTimer}s)`
+                                            ) : phoneOtpSent ? (
                                                 'Resend OTP'
                                             ) : (
                                                 'Verify Mobile (Send OTP)'
@@ -530,11 +625,11 @@ export default function RegisterPage() {
                             )}
 
                             {/* OTP Input */}
-                            {otpSent && !otpVerified && (
+                            {phoneOtpSent && !phoneOtpVerified && (
                                 <div className="mt-4 p-4 bg-zinc-50 rounded-xl border border-zinc-200">
                                     <p className="text-sm text-zinc-600 mb-3">Enter the 6-digit OTP sent to {selectedCountry.code} {phone}</p>
                                     <div className="flex gap-2 justify-center mb-4">
-                                        {otp.map((digit, index) => (
+                                        {phoneOtp.map((digit, index) => (
                                             <input
                                                 key={index}
                                                 id={`otp-${index}`}
@@ -542,7 +637,7 @@ export default function RegisterPage() {
                                                 inputMode="numeric"
                                                 maxLength={1}
                                                 value={digit}
-                                                onChange={(e) => handleOtpChange(index, e.target.value)}
+                                                onChange={(e) => handleOtpChange(index, e.target.value, phoneOtp, setPhoneOtp)}
                                                 onKeyDown={(e) => handleOtpKeyDown(index, e)}
                                                 className="w-12 h-12 text-center text-xl font-bold bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all"
                                             />
@@ -550,11 +645,11 @@ export default function RegisterPage() {
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={handleVerifyOtp}
-                                        disabled={otp.join('').length !== 6 || verifyingOtp}
+                                        onClick={handleVerifyPhoneOtp}
+                                        disabled={phoneOtp.join('').length !== 6 || verifyingPhoneOtp}
                                         className="w-full py-3 bg-black text-white rounded-xl font-bold text-sm hover:bg-zinc-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                                     >
-                                        {verifyingOtp ? (
+                                        {verifyingPhoneOtp ? (
                                             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                         ) : (
                                             <>
@@ -566,7 +661,7 @@ export default function RegisterPage() {
                                 </div>
                             )}
 
-                            {otpVerified && (
+                            {phoneOtpVerified && (
                                 <p className="text-xs text-green-500 flex items-center gap-1">
                                     <Check className="w-3 h-3" />
                                     Phone number verified successfully
@@ -579,20 +674,91 @@ export default function RegisterPage() {
                             <label className="text-xs font-bold uppercase tracking-wider font-mulish text-zinc-400" htmlFor="email">
                                 Email<span className="text-red-500">*</span>
                             </label>
-                            <input
-                                id="email"
-                                type="email"
-                                className={`w-full px-4 py-3.5 bg-zinc-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all ${touched.email && errors.email ? 'border-red-500' : 'border-zinc-200'
-                                    }`}
-                                placeholder="Enter your email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                onBlur={() => handleBlur('email')}
-                            />
+                            <div className="relative">
+                                <input
+                                    id="email"
+                                    type="email"
+                                    className={`w-full px-4 py-3.5 bg-zinc-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all ${touched.email && errors.email ? 'border-red-500' : 'border-zinc-200'
+                                        }`}
+                                    placeholder="Enter your email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    onBlur={() => handleBlur('email')}
+                                />
+                                {emailOtpVerified && (
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <Check className="w-5 h-5 text-green-500" />
+                                    </div>
+                                )}
+
+                                {/* Verify Button */}
+                                {!emailOtpVerified && (
+                                    <button
+                                        type="button"
+                                        onClick={handleSendEmailOtp}
+                                        disabled={sendingEmailOtp || (emailOtpSent && emailOtpTimer > 0)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 px-4 py-3.5 text-xs font-bold uppercase tracking-wider text-black hover:text-black transition-colors whitespace-nowrap disabled:opacity-50"
+                                    >
+                                        {sendingEmailOtp ? (
+                                            <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                                        ) : emailOtpSent && emailOtpTimer > 0 ? (
+                                            `Resend (${emailOtpTimer}s)`
+                                        ) : emailOtpSent ? (
+                                            'Resend Code'
+                                        ) : (
+                                            'Verify Email'
+                                        )}
+                                    </button>
+                                )}
+                            </div>
                             {touched.email && errors.email && (
                                 <p className="text-xs text-red-500 flex items-center gap-1">
                                     <AlertCircle className="w-3 h-3" />
                                     {errors.email}
+                                </p>
+                            )}
+
+                            {/* OTP Input */}
+                            {emailOtpSent && !emailOtpVerified && (
+                                <div className="mt-4 p-4 bg-zinc-50 rounded-xl border border-zinc-200">
+                                    <p className="text-sm text-zinc-600 mb-3">Enter the 6-digit OTP sent to {email}</p>
+                                    <div className="flex gap-2 justify-center mb-4">
+                                        {emailOtp.map((digit, index) => (
+                                            <input
+                                                key={index}
+                                                id={`otp-${index}`}
+                                                type="text"
+                                                inputMode="numeric"
+                                                maxLength={1}
+                                                value={digit}
+                                                onChange={(e) => handleOtpChange(index, e.target.value, emailOtp, setEmailOtp)}
+                                                onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                                                className="w-12 h-12 text-center text-xl font-bold bg-white border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all"
+                                            />
+                                        ))}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleVerifyEmailOtp}
+                                        disabled={emailOtp.join('').length !== 6 || verifyingEmailOtp}
+                                        className="w-full py-3 bg-black text-white rounded-xl font-bold text-sm hover:bg-zinc-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {verifyingEmailOtp ? (
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        ) : (
+                                            <>
+                                                <Check className="w-4 h-4" />
+                                                Verify OTP
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            )}
+
+                            {emailOtpVerified && (
+                                <p className="text-xs text-green-500 flex items-center gap-1">
+                                    <Check className="w-3 h-3" />
+                                    Email verified successfully
                                 </p>
                             )}
                         </div>
@@ -685,6 +851,7 @@ export default function RegisterPage() {
                                 </p>
                             )}
                         </div>
+                        <div id="recaptcha-container" className="hidden"></div>
 
                         {/* Submit Button */}
                         <button
