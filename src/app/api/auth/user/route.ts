@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 
 export async function GET() {
     const sessionId = (await cookies()).get("session_id")?.value;
-    console.log(sessionId);
     if (!sessionId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -14,9 +13,17 @@ export async function GET() {
         include: {
             user: {
                 select: {
+                    id: true,
                     firstName: true,
                     lastName: true,
+                    countryCode: true,
+                    phone: true,
                     email: true,
+                    isPhoneVerified: true,
+                    isEmailVerified: true,
+                    whmcsClientId: true,
+                    createdAt: true,
+                    updatedAt: true,
                 },
             },
         },

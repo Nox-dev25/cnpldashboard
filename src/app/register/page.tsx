@@ -16,13 +16,6 @@ import {
     X,
     AlertCircle
 } from 'lucide-react';
-import {
-    signInWithPhoneNumber,
-    RecaptchaVerifier,
-    ConfirmationResult
-} from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { toast } from "sonner";
 
 // Country codes data with flags (emoji)
 const countryCodes = [
@@ -97,8 +90,6 @@ export default function RegisterPage() {
     const [errors, setErrors] = useState<FormErrors>({});
     const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-    const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-
     // Phone OTP States
     const [phoneOtpSent, setPhoneOtpSent] = useState(false);
     const [phoneOtp, setPhoneOtp] = useState<string[]>(['', '', '', '', '', '']);
@@ -118,22 +109,10 @@ export default function RegisterPage() {
     // OTP Timer
     useEffect(() => {
         if (phoneOtpTimer > 0) {
-            const timer = setTimeout(() => setPhoneOtpTimer(t => t - 1), 1000);
+            const timer = setTimeout(() => setPhoneOtpTimer(phoneOtpTimer - 1), 1000);
             return () => clearTimeout(timer);
         }
     }, [phoneOtpTimer]);
-
-    useEffect(() => {
-        if (typeof window !== "undefined" && !window.recaptchaVerifier) {
-            window.recaptchaVerifier = new RecaptchaVerifier(
-                auth,
-                "recaptcha-container",
-                {
-                    size: "invisible",
-                }
-            );
-        }
-    }, []);
 
     useEffect(() => {
         if (emailOtpTimer > 0) {
@@ -207,31 +186,21 @@ export default function RegisterPage() {
 
     // Send Phone OTP
     const handleSendPhoneOtp = async () => {
-        try {
-            setSendingPhoneOtp(true);
-
-            const fullPhone = `${selectedCountry.code}${phone}`;
-            const appVerifier = window.recaptchaVerifier!;
-
-            const result = await signInWithPhoneNumber(
-                auth,
-                fullPhone,
-                appVerifier
-            );
-
-            setConfirmationResult(result);
-            setPhoneOtpSent(true);
-            setPhoneOtpTimer(60);
-            toast.success("OTP sent to your phone");
-
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to send OTP");
-        } finally {
-            setSendingPhoneOtp(false);
+        const phoneError = validatePhone(phone);
+        if (phoneError) {
+            setErrors(p => ({ ...p, phone: phoneError }));
+            setTouched(p => ({ ...p, phone: true }));
+            return;
         }
-    };
 
+        setSendingPhoneOtp(true);
+        await new Promise(r => setTimeout(r, 1500)); // API
+        setSendingPhoneOtp(false);
+
+        setPhoneOtpSent(true);
+        setPhoneOtpTimer(60);
+        setPhoneOtp(['', '', '', '', '', '']);
+    };
 
     // Send Email OTP
     const handleSendEmailOtp = async () => {
@@ -278,24 +247,14 @@ export default function RegisterPage() {
 
     // Verify Phone OTP
     const handleVerifyPhoneOtp = async () => {
-        try {
-            if (!confirmationResult) return;
+        if (phoneOtp.join('').length !== 6) return;
 
-            setVerifyingPhoneOtp(true);
+        setVerifyingPhoneOtp(true);
+        await new Promise(r => setTimeout(r, 1500)); // API
+        setVerifyingPhoneOtp(false);
 
-            const code = phoneOtp.join("");
-            await confirmationResult.confirm(code);
-
-            setPhoneOtpVerified(true);
-            setPhoneOtpSent(false);
-            toast.success("Phone number verified");
-
-        } catch (error) {
-            console.error(error);
-            toast.error("Invalid OTP");
-        } finally {
-            setVerifyingPhoneOtp(false);
-        }
+        setPhoneOtpVerified(true);
+        setPhoneOtpSent(false);
     };
 
     // Verify Phone OTP
@@ -329,7 +288,7 @@ export default function RegisterPage() {
         if (!emailOtpVerified) {
             setErrors(prev => ({
                 ...prev,
-                email: "Please verify your email address",
+                phone: "Please verify your email address",
             }));
             return;
         }
@@ -348,6 +307,8 @@ export default function RegisterPage() {
                     countryCode: selectedCountry.code,
                     email,
                     password,
+                    phoneVerified: phoneOtpVerified,
+                    emailVerified: emailOtpVerified,
                 }),
             });
 
@@ -851,7 +812,6 @@ export default function RegisterPage() {
                                 </p>
                             )}
                         </div>
-                        <div id="recaptcha-container" className="hidden"></div>
 
                         {/* Submit Button */}
                         <button

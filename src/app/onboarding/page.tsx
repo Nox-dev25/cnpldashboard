@@ -76,6 +76,37 @@ const KYCValidation = () => {
     });
 
     useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const res = await fetch("/api/onboarding/me");
+                if (!res.ok) {
+                    router.push("/login");
+                    return;
+                }
+
+                const data = await res.json();
+
+                // Hidden fields
+                setEmail(data.user.email);
+                setPhone(data.user.phone);
+
+                // Verification state
+                setVerification(prev => ({
+                    ...prev,
+                    email: data.user.isEmailVerified,
+                    phone: data.user.isPhoneVerified,
+                }));
+
+            } catch (err) {
+                console.error(err);
+                router.push("/login");
+            }
+        };
+
+        fetchUser();
+    }, [router]);
+
+    useEffect(() => {
         const detectCountry = async () => {
             try {
                 const res = await fetch("https://ipapi.co/json/");
@@ -97,26 +128,6 @@ const KYCValidation = () => {
     }, [selectedCountry]);
 
     const isIndian = selectedCountry === "India";
-
-    const handleVerifyEmail = () => {
-        toast.info("Verification email sent!");
-        setTimeout(() => {
-            setVerification(prev => ({ ...prev, email: true }));
-            toast.success("Email verified successfully!");
-        }, 2000);
-    };
-
-    const handleVerifyPhone = () => {
-        if (!phone) {
-            toast.error("Please enter phone number first");
-            return;
-        }
-        toast.info("OTP sent to your phone!");
-        setTimeout(() => {
-            setVerification(prev => ({ ...prev, phone: true }));
-            toast.success("Phone verified successfully!");
-        }, 2000);
-    };
 
     const handleVerifyGST = () => {
         if (!gstNumber) {
@@ -247,21 +258,12 @@ const KYCValidation = () => {
                                         <Input
                                             type="email"
                                             value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            className="pr-24"
+                                            readOnly
+                                            disabled={verification.email}
+                                            className={`pr-24 ${verification.email ? "bg-muted cursor-not-allowed" : ""}`}
                                         />
-                                        {verification.email ? (
+                                        {verification.email && (
                                             <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
-                                        ) : (
-                                            <Button
-                                                type="button"
-                                                variant="link"
-                                                size="sm"
-                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 text-primary"
-                                                onClick={handleVerifyEmail}
-                                            >
-                                                Verify Email
-                                            </Button>
                                         )}
                                     </div>
                                 </div>
@@ -274,22 +276,13 @@ const KYCValidation = () => {
                                         <Input
                                             type="tel"
                                             value={phone}
+                                            readOnly
+                                            disabled={verification.phone}
+                                            className={`pr-10 ${verification.phone ? "bg-muted cursor-not-allowed" : ""}`}
                                             onChange={(e) => setPhone(e.target.value)}
-                                            placeholder={isIndian ? "+91 XXXXX XXXXX" : "+1 XXX XXX XXXX"}
-                                            className="pr-10"
                                         />
-                                        {verification.phone ? (
+                                        {verification.phone && (
                                             <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
-                                        ) : (
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                                                onClick={handleVerifyPhone}
-                                            >
-                                                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                                            </Button>
                                         )}
                                     </div>
                                 </div>
@@ -329,7 +322,7 @@ const KYCValidation = () => {
                                 </Card>
                             </div>
 
-                            {/* Individual Verification - DigiLocker for India */}
+                            {/* Individual Verification - DIGILOCKER for India */}
                             {accountType === "individual" && isIndian && (
                                 <div className="pt-2">
                                     <Button
@@ -340,7 +333,7 @@ const KYCValidation = () => {
                                         {verification.aadhar ? (
                                             <>
                                                 <CheckCircle2 className="h-4 w-4 mr-2" />
-                                                Verified with DigiLocker
+                                                Verified Your Adhar
                                             </>
                                         ) : (
                                             "VERIFY WITH DIGILOCKER"

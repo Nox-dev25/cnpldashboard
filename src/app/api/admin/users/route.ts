@@ -6,16 +6,13 @@ export async function PUT(request: Request) {
         const body = await request.json();
         const { id, name, email, status } = body;
 
-        // Extract numeric ID from formatted ID (USR001 -> 1)
         const numericId = parseInt(id.replace("USR", ""), 10);
 
-        // Split name into firstName and lastName
         const nameParts = name.trim().split(" ");
         const firstName = nameParts[0];
         const lastName = nameParts.slice(1).join(" ") || "";
 
-        // Map status to otpVerified
-        const otpVerified = status === "active";
+        const isEmailVerified = status === "active" ? 1 : null;
 
         const updatedUser = await db.user.update({
             where: { id: numericId },
@@ -23,7 +20,7 @@ export async function PUT(request: Request) {
                 firstName,
                 lastName,
                 email,
-                otpVerified,
+                isEmailVerified,
             },
             select: {
                 id: true,
@@ -32,26 +29,23 @@ export async function PUT(request: Request) {
                 email: true,
                 phone: true,
                 countryCode: true,
-                otpVerified: true,
+                isEmailVerified: true,
                 createdAt: true,
             },
         });
 
-        // Return formatted user
-        const formattedUser = {
-            id: `USR${String(updatedUser.id).padStart(3, "0")}`,
-            name: `${updatedUser.firstName} ${updatedUser.lastName}`,
-            email: updatedUser.email,
-            phone: `${updatedUser.countryCode} ${updatedUser.phone}`,
-            status: updatedUser.otpVerified ? "active" : "inactive",
-            kycStatus: "pending",
-            createdAt: updatedUser.createdAt.toISOString().split("T")[0],
-            avatar: `${updatedUser.firstName.charAt(0)}${updatedUser.lastName.charAt(0)}`.toUpperCase(),
-        };
-
         return NextResponse.json({
             success: true,
-            data: formattedUser,
+            data: {
+                id: `USR${String(updatedUser.id).padStart(3, "0")}`,
+                name: `${updatedUser.firstName} ${updatedUser.lastName}`,
+                email: updatedUser.email,
+                phone: `${updatedUser.countryCode} ${updatedUser.phone}`,
+                status: updatedUser.isEmailVerified ? "active" : "inactive",
+                kycStatus: "pending",
+                createdAt: updatedUser.createdAt.toISOString().split("T")[0],
+                avatar: `${updatedUser.firstName[0]}${updatedUser.lastName[0]}`.toUpperCase(),
+            },
         });
     } catch (error) {
         console.error("Error updating user:", error);
@@ -72,7 +66,7 @@ export async function GET() {
                 email: true,
                 phone: true,
                 countryCode: true,
-                otpVerified: true,
+                isEmailVerified: true,
                 createdAt: true,
                 updatedAt: true,
             },
@@ -87,7 +81,7 @@ export async function GET() {
             name: `${user.firstName} ${user.lastName}`,
             email: user.email,
             phone: `${user.countryCode} ${user.phone}`,
-            status: user.otpVerified ? "active" : "inactive",
+            status: user.isEmailVerified ? "active" : "inactive",
             kycStatus: "pending", // You can add KYC status to your schema later
             createdAt: user.createdAt.toISOString().replace("T", " ").slice(0, 16),
             updatedAt: user.updatedAt.toISOString().replace("T", " ").slice(0, 16),

@@ -1,3 +1,5 @@
+"use client";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Shield } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
@@ -7,18 +9,59 @@ interface KYCBannerProps {
   userName?: string;
 }
 
+type User = {
+  firstName: string;
+  lastName: string;
+};
+
 export function KYCBanner({ userName = "User" }: KYCBannerProps) {
   const router = useRouter();
-  const handleCompleteKYC = () => {
-    toast.info("KYC validation process will be initiated");
-    router.push("/onboarding");
+  const handleCompleteKYC = async () => {
+    try {
+      toast.info("Starting KYC process...");
+
+      const res = await fetch("/api/onboarding/start", {
+        method: "POST",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || "Unable to start onboarding");
+        return;
+      }
+
+      if (res.ok) {
+        window.location.href = `/onboarding?id=${data.onboardingUuid}`;
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Something went wrong");
+    }
   };
+  const [user, setUser] = useState<User | null>(null);
+
+  // Fetch logged-in user
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("/api/auth/user");
+        if (!res.ok) throw new Error("Unauthorized");
+        const data = await res.json();
+        setUser(data);
+      } catch {
+        // silently fail — middleware will redirect if needed
+      }
+    };
+
+    fetchUser();
+  }, []);
 
   return (
     <div className="space-y-4">
       {/* Welcome Header */}
       <div>
-        <h1 className="text-xl font-bold text-foreground">Hello {userName},</h1>
+        <h1 className="text-xl font-bold text-foreground">Hello {user ? `${user.firstName} ${user.lastName}` : ""},</h1>
         <p className="text-muted-foreground mt-1">Welcome to Cantech Networks!</p>
       </div>
 
