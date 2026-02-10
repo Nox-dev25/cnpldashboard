@@ -53,17 +53,32 @@ model Session {
 }
 
 model SuperAdmin {
-  id        Int     @id @default(autoincrement())
-  first_name String
-  last_name String
-  email     String  @unique
-  mobile    String? @unique
-  password  String
-  role      String  @default("2")
-  status    Boolean @default(true)
+  id                 Int       @id @default(autoincrement())
+  first_name         String
+  last_name          String
+  email              String    @unique
+  mobile             String?   @unique
+  password           String
+  role               String    @default("2")
+  status             Boolean   @default(true)
   two_factor_enabled Boolean   @default(false)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  two_factor_secret  String?
+
+  // Profile Fields
+  gender             String?
+  date_of_birth      DateTime?
+  country            String?
+  state              String?
+  city               String?
+  postal_code        String?
+  address            String?
+
+  // System Fields
+  last_login_at      DateTime?
+  last_login_ip      String?
+
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @default(now())
 }
 
 model Onboarding {
