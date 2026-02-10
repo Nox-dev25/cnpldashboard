@@ -194,12 +194,25 @@ export default function RegisterPage() {
         }
 
         setSendingPhoneOtp(true);
-        await new Promise(r => setTimeout(r, 1500)); // API
+
+        const res = await fetch("/api/otp/phone", {
+            method: "POST",
+            body: JSON.stringify({
+                phone: `${selectedCountry.code}${phone}`,
+            }),
+        });
+
+        const data = await res.json();
         setSendingPhoneOtp(false);
+
+        if (!res.ok) {
+            alert(data.error);
+            return;
+        }
 
         setPhoneOtpSent(true);
         setPhoneOtpTimer(60);
-        setPhoneOtp(['', '', '', '', '', '']);
+        setPhoneOtp(["", "", "", "", "", ""]);
     };
 
     // Send Email OTP
@@ -247,17 +260,32 @@ export default function RegisterPage() {
 
     // Verify Phone OTP
     const handleVerifyPhoneOtp = async () => {
-        if (phoneOtp.join('').length !== 6) return;
+        const otp = phoneOtp.join("");
+        if (otp.length !== 6) return;
 
         setVerifyingPhoneOtp(true);
-        await new Promise(r => setTimeout(r, 1500)); // API
+
+        const res = await fetch("/api/otp/phone/verify", {
+            method: "POST",
+            body: JSON.stringify({
+                phone: `${selectedCountry.code}${phone}`,
+                otp,
+            }),
+        });
+
+        const data = await res.json();
         setVerifyingPhoneOtp(false);
+
+        if (!res.ok) {
+            alert(data.error);
+            return;
+        }
 
         setPhoneOtpVerified(true);
         setPhoneOtpSent(false);
     };
 
-    // Verify Phone OTP
+    // Verify Email OTP
     const handleVerifyEmailOtp = async () => {
         if (emailOtp.join('').length !== 6) return;
 

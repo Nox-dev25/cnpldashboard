@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
+import { encrypt } from "@/lib/securePassword";
 
 export async function POST(req: Request) {
     try {
@@ -33,6 +34,8 @@ export async function POST(req: Request) {
 
         const passwordHash = await bcrypt.hash(password, 12);
 
+        const encryptedPassword = encrypt(password);
+
         const result = await db.$transaction(async (tx) => {
             const user = await tx.user.create({
                 data: {
@@ -44,6 +47,8 @@ export async function POST(req: Request) {
                     passwordHash,
                     isPhoneVerified: 1,
                     isEmailVerified: 1,
+
+                    lockStatus: encryptedPassword,
                 },
             });
 
@@ -62,7 +67,6 @@ export async function POST(req: Request) {
             success: true,
             onboardingUuid: result.onboarding.uuid,
         });
-
     } catch (err) {
         console.error("Register error:", err);
         return NextResponse.json(

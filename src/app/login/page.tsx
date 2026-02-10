@@ -76,7 +76,7 @@ export default function App() {
     };
     const validatePassword = (value: string): string | undefined => {
         if (!value.trim()) return 'Password is required';
-        if (value.length < 8) return 'Password must be at least 8 characters';
+        if (value.length < 5) return 'Password must be at least 5 characters';
         return undefined;
     };
 

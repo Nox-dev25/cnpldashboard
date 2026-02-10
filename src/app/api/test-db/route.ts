@@ -1,7 +1,23 @@
-import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { callWhmcs } from "@/lib/whmcsProxy";
 
 export async function GET() {
-    const result = await db.$queryRaw`SELECT 1`;
-    return NextResponse.json({ ok: true, result });
+    try {
+        // simple safe WHMCS call
+        const data = await callWhmcs("GetClients", {
+            limitnum: 1,
+        });
+
+        return Response.json({
+            success: true,
+            whmcs: data,
+        });
+    } catch (error: any) {
+        return Response.json(
+            {
+                success: false,
+                error: error.message || "Unknown error",
+            },
+            { status: 500 }
+        );
+    }
 }

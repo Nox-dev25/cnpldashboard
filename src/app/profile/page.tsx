@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/app/components/dashboard/DashboardLayout";
+import { OnboardingGuard } from "@/app/components/OnboardingGuard";
 import { Card, CardContent, CardHeader } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -16,6 +17,7 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from "@/app/components/ui/breadcrumb";
+
 
 export default function Profile() {
     const router = useRouter();
@@ -61,88 +63,90 @@ export default function Profile() {
 
     if (!loading) {
         return (
-            <DashboardLayout>
-                <div className="space-y-6">
-                    <Breadcrumb>
-                        <BreadcrumbList>
-                            <BreadcrumbItem>
-                                <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
-                            </BreadcrumbItem>
-                            <BreadcrumbSeparator />
-                            <BreadcrumbItem>
-                                <BreadcrumbPage>Profile</BreadcrumbPage>
-                            </BreadcrumbItem>
-                        </BreadcrumbList>
-                    </Breadcrumb>
+            <OnboardingGuard>
+                <DashboardLayout>
+                    <div className="space-y-6">
+                        <Breadcrumb>
+                            <BreadcrumbList>
+                                <BreadcrumbItem>
+                                    <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+                                </BreadcrumbItem>
+                                <BreadcrumbSeparator />
+                                <BreadcrumbItem>
+                                    <BreadcrumbPage>Profile</BreadcrumbPage>
+                                </BreadcrumbItem>
+                            </BreadcrumbList>
+                        </Breadcrumb>
 
-                    <Card className="border-border bg-card max-w-2xl">
-                        <CardContent className="pt-6">
-                            <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
-                                <div className="space-y-2">
-                                    <Label htmlFor="firstName" className="text-muted-foreground">
-                                        First Name
-                                    </Label>
-                                    <Input
-                                        id="firstName"
-                                        value={formData.firstName}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, firstName: e.target.value })
-                                        }
-                                        disabled
-                                        className="bg-muted/50 border-border text-muted-foreground cursor-not-allowed"
-                                    />
-                                </div>
+                        <Card className="border-border bg-card max-w-2xl">
+                            <CardContent className="pt-6">
+                                <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="firstName" className="text-muted-foreground">
+                                            First Name
+                                        </Label>
+                                        <Input
+                                            id="firstName"
+                                            value={formData.firstName}
+                                            onChange={(e) =>
+                                                setFormData({ ...formData, firstName: e.target.value })
+                                            }
+                                            disabled
+                                            className="bg-muted/50 border-border text-muted-foreground cursor-not-allowed"
+                                        />
+                                    </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="lastName" className="text-muted-foreground">
-                                        Last Name
-                                    </Label>
-                                    <Input
-                                        id="lastName"
-                                        value={formData.lastName}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, lastName: e.target.value })
-                                        }
-                                        disabled
-                                        className="bg-muted/50 border-border text-muted-foreground cursor-not-allowed"
-                                    />
-                                </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="lastName" className="text-muted-foreground">
+                                            Last Name
+                                        </Label>
+                                        <Input
+                                            id="lastName"
+                                            value={formData.lastName}
+                                            onChange={(e) =>
+                                                setFormData({ ...formData, lastName: e.target.value })
+                                            }
+                                            disabled
+                                            className="bg-muted/50 border-border text-muted-foreground cursor-not-allowed"
+                                        />
+                                    </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="email" className="text-muted-foreground">
-                                        Email Address
-                                    </Label>
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        value={formData.email}
-                                        disabled
-                                        className="bg-muted/50 border-border text-muted-foreground cursor-not-allowed"
-                                    />
-                                </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="email" className="text-muted-foreground">
+                                            Email Address
+                                        </Label>
+                                        <Input
+                                            id="email"
+                                            type="email"
+                                            value={formData.email}
+                                            disabled
+                                            className="bg-muted/50 border-border text-muted-foreground cursor-not-allowed"
+                                        />
+                                    </div>
 
-                                <div className="flex gap-4 pt-4">
-                                    <Button
-                                        type="submit"
-                                        disabled
-                                        className="bg-primary disabled:bg-primary/90 cursor-not-allowed text-primary-foreground hover:bg-primary/90"
-                                    >
-                                        Save Changes
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        onClick={handleCancel}
-                                        className="text-primary hover:text-primary/80"
-                                    >
-                                        Cancel
-                                    </Button>
-                                </div>
-                            </form>
-                        </CardContent>
-                    </Card>
-                </div>
-            </DashboardLayout>
+                                    <div className="flex gap-4 pt-4">
+                                        <Button
+                                            type="submit"
+                                            disabled
+                                            className="bg-primary disabled:bg-primary/90 cursor-not-allowed text-primary-foreground hover:bg-primary/90"
+                                        >
+                                            Save Changes
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            onClick={handleCancel}
+                                            className="text-primary hover:text-primary/80"
+                                        >
+                                            Cancel
+                                        </Button>
+                                    </div>
+                                </form>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </DashboardLayout>
+            </OnboardingGuard>
         );
     }
 }
