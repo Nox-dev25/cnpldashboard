@@ -37,6 +37,7 @@ model User {
   kycProfile       KycProfile?
   sessions         Session[]
   kycVerifications KycVerification[]
+  verifications    VerificationDocument[]
 
   @@map("users")
 }
@@ -53,32 +54,32 @@ model Session {
 }
 
 model SuperAdmin {
-  id                 Int       @id @default(autoincrement())
-  first_name         String
-  last_name          String
-  email              String    @unique
-  mobile             String?   @unique
-  password           String
-  role               String    @default("2")
-  status             Boolean   @default(true)
-  two_factor_enabled Boolean   @default(false)
-  two_factor_secret  String?
+  id                 Int     @id @default(autoincrement())
+  first_name         String
+  last_name          String
+  email              String  @unique
+  mobile             String? @unique
+  password           String
+  role               String  @default("2")
+  status             Boolean @default(true)
+  two_factor_enabled Boolean @default(false)
+  two_factor_secret  String?
 
-  // Profile Fields
-  gender             String?
-  date_of_birth      DateTime?
-  country            String?
-  state              String?
-  city               String?
-  postal_code        String?
-  address            String?
+  // Profile Fields
+  gender        String?
+  date_of_birth DateTime?
+  country       String?
+  state         String?
+  city          String?
+  postal_code   String?
+  address       String?
 
-  // System Fields
-  last_login_at      DateTime?
-  last_login_ip      String?
+  // System Fields
+  last_login_at DateTime?
+  last_login_ip String?
 
-  created_at         DateTime  @default(now())
-  updated_at         DateTime  @default(now())
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
 }
 
 model Onboarding {
@@ -118,10 +119,10 @@ model KycProfile {
   email     String
   phone     String
   country   String
-  
-  state        String?
-  city         String?
-  postalCode   String?
+
+  state         String?
+  city          String?
+  postalCode    String?
   streetAddress String?
 
   companyName    String?
@@ -134,7 +135,46 @@ model KycProfile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verifications VerificationDocument[]
 
   @@map("kyc_profiles")
+}
+
+model VerificationDocument {
+  id Int @id @default(autoincrement())
+
+  // Link to user FIRST (verification before KYC)
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Link to KYC AFTER submit (optional)
+  kycProfileId Int?
+  kycProfile   KycProfile? @relation(fields: [kycProfileId], references: [id], onDelete: Cascade)
+
+  // Verification Type
+  verificationType String // "aadhaar" | "gst" | "cin" | "digilocker"
+
+  // Document Numbers (encrypted)
+  documentNumber String?
+
+  // Cashfree Response Data
+  cashfreeRefId      String? @unique
+  verificationStatus String? // "success" | "failed" | "pending"
+
+  // Extracted Data
+  extractedData Json?
+
+  // Raw Response
+  rawResponse Json?
+
+  // Timestamps
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([kycProfileId])
+  @@index([cashfreeRefId])
+  @@map("verification_documents")
 }

@@ -17,6 +17,7 @@ import { EnterpriseVerification, type BusinessType } from "./EnterpriseVerificat
 import { BillingAddress, type BillingAddressType } from "./BillingAddress";
 import { TermsAndConditions } from "./TermsAndConditions";
 
+
 type AccountType = "individual" | "enterprise" | null;
 
 type Props = {
@@ -173,25 +174,34 @@ const KYCValidation = () => {
         }, 1200);
     };
 
-    // const handleVerifyPAN = () => {
-    //     if (!panNumber) {
-    //         toast.error("Please enter PAN number first");
-    //         return;
-    //     }
-    //     toast.info("Verifying PAN...");
-    //     setTimeout(() => {
-    //         setVerification(prev => ({ ...prev, pan: true }));
-    //         toast.success("PAN verified successfully!");
-    //     }, 2000);
-    // };
+    const handleDigiLockerVerify = async () => {
+        const loadingToast = toast.loading("Initializing DigiLocker verification...");
 
-    const handleDigiLockerVerify = () => {
-        toast.info("Redirecting to DigiLocker...");
+        try {
+            const res = await fetch("/api/verify/digilocker", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone }), // Send phone if available
+            });
 
-        setTimeout(() => {
-            setVerification(prev => ({ ...prev, aadhar: true }));
-            toast.success("Identity verified successfully via DigiLocker");
-        }, 1500);
+            const result = await res.json();
+            toast.dismiss(loadingToast);
+
+            if (result.url) {
+                // Open the verification URL
+                window.open(result.url, "_blank");
+                toast.success("Please complete verification in the new window");
+            } else if (result.success) {
+                setVerification(prev => ({ ...prev, aadhar: true }));
+                toast.success(result.message || "Identity verified via DigiLocker!");
+            } else {
+                toast.error(result.error || "DigiLocker verification failed");
+            }
+        } catch (error) {
+            toast.dismiss(loadingToast);
+            toast.error("Failed to initialize DigiLocker. Please try again.");
+            console.error("DigiLocker API error:", error);
+        }
     };
 
     const handleSubmit = async () => {

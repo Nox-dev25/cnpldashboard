@@ -1,52 +1,50 @@
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { cashfreeHeaders } from "@/lib/cashfree";
-import { db } from "@/lib/db";
+import { NextRequest, NextResponse } from 'next/server';
+import { getCurrentUser } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { cashfreeClient } from '@/lib/cashfree';
 
-export async function POST() {
+export async function POST(req: NextRequest) {
     try {
-        const res = await fetch(
-            `${process.env.CASHFREE_BASE_URL}/verification/v1/identity/digilocker/initiate`,
-            {
-                method: "POST",
-                headers: cashfreeHeaders(),
-                body: JSON.stringify({
-                    redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/kyc/digilocker/callback`,
-                }),
-            }
-        );
-
-        const data = await res.json();
-
-        if (!res.ok || !data.redirect_url || !data.reference_id) {
-            console.error("Cashfree error:", data);
-            return NextResponse.json(
-                { error: "Failed to initiate DigiLocker" },
-                { status: 400 }
-            );
+        const currentUser = await getCurrentUser();
+        if (!currentUser?.email) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const cookieStore = await cookies();
-        const sessionId = cookieStore.get("session_id")?.value;
+        const user = await db.user.findUnique({
+            where: { email: currentUser.email },
+        });
 
-        if (sessionId) {
-            const session = await db.session.findUnique({
-                where: { id: sessionId },
-            });
-
-            if (session) {
-                await db.kycProfile.update({
-                    where: { userId: session.userId },
-                    data: { digilockerRef: data.reference_id },
-                });
-            }
+        if (!user) {
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
 
-        return NextResponse.json({ redirectUrl: data.redirect_url });
-    } catch (err) {
-        console.error("DigiLocker initiate error:", err);
+        // Call Cashfree
+        const verificationResult = await cashfreeClient.verifyDigiLocker({
+            document_requested: ["AADHAAR"],
+        });
+
+        // Store ONLY verification document (no kycProfile)
+        await db.verificationDocument.create({
+            data: {
+                userId: user.id,
+                verificationType: "digilocker",
+                cashfreeRefId: verificationResult.verification_id,
+                verificationStatus: "pending",
+                rawResponse: verificationResult,
+            },
+        });
+
+        return NextResponse.json({
+            success: true,
+            url: verificationResult.url,
+            verificationId: verificationResult.verification_id,
+            status: verificationResult.status,
+        });
+
+    } catch (error: any) {
+        console.error("DigiLocker API error:", error);
         return NextResponse.json(
-            { error: "DigiLocker initiation failed" },
+            { error: error.message || "Failed to start verification" },
             { status: 500 }
         );
     }

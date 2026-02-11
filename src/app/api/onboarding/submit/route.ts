@@ -37,7 +37,7 @@ export async function POST(req: Request) {
             digilockerRef,
         } = body;
 
-        // Only validate fields NOT coming from DB
+        // Basic validation
         if (!accountType || !country) {
             return NextResponse.json(
                 { error: "Missing required KYC fields" },
@@ -45,6 +45,7 @@ export async function POST(req: Request) {
             );
         }
 
+        // Create or update KYC profile
         const kycProfile = await db.kycProfile.upsert({
             where: { userId: session.user.id },
             update: {
@@ -83,6 +84,17 @@ export async function POST(req: Request) {
                 cinVerified: !!cinVerified,
                 aadharVerified: !!aadharVerified,
                 digilockerRef,
+            },
+        });
+
+        // LINK previous verification documents to this KYC
+        await db.verificationDocument.updateMany({
+            where: {
+                userId: session.user.id,
+                kycProfileId: null, // only unlinked docs
+            },
+            data: {
+                kycProfileId: kycProfile.id,
             },
         });
 
