@@ -37,7 +37,7 @@ export class CashfreeVerificationClient {
                 method: "POST",
                 headers: this.headers,
                 body: JSON.stringify({
-                    
+
                     verification_id: this.generateVerificationId(),
 
                     // REQUIRED
@@ -45,14 +45,14 @@ export class CashfreeVerificationClient {
 
                     // IMPORTANT (avoid bad request in sandbox)
                     redirect_url: "https://undemonstratively-ascensive-nikki.ngrok-free.dev/kyc/digilocker/callback",
-                    
+
 
                     user_flow: "signup",
                 }),
             });
-            
+
             const data = await response.json();
-            
+
             if (!response.ok) {
                 console.error("Cashfree DigiLocker error:", data);
                 throw new Error(data.message || "DigiLocker verification failed");
@@ -85,6 +85,30 @@ export class CashfreeVerificationClient {
             return data;
         } catch (error) {
             console.error("DigiLocker status fetch error:", error);
+            throw error;
+        }
+    }
+
+    async getDigiLockerDocument(verificationId: string) {
+        try {
+            const response = await fetch(
+                `${CASHFREE_BASE_URL}/verification/digilocker/document/AADHAAR?verification_id=${verificationId}`,
+                {
+                    method: "GET",
+                    headers: this.headers,
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                console.error("Cashfree document error:", data);
+                throw new Error(data.message || "Failed to fetch DigiLocker document");
+            }
+
+            return data;
+        } catch (error) {
+            console.error("DigiLocker document fetch error:", error);
             throw error;
         }
     }

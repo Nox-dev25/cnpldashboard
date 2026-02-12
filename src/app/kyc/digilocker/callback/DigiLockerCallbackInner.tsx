@@ -1,50 +1,30 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { toast } from "sonner";
+import { useSearchParams } from "next/navigation";
 
-function DigiLockerCallbackInner() {
-    const router = useRouter();
+export default function DigiLockerCallbackInner() {
     const searchParams = useSearchParams();
 
     useEffect(() => {
         const verificationId = searchParams.get("verification_id");
-        const onboardingId = localStorage.getItem("onboardingId");
 
-        if (!verificationId || !onboardingId) {
-            toast.error("Verification session expired");
-            router.replace("/dashboard");
-            return;
+        if (!verificationId) return;
+
+        // send message to opener tab
+        if (window.opener) {
+            window.opener.postMessage(
+                {
+                    type: "DIGILOCKER_SUCCESS",
+                    verificationId,
+                },
+                window.location.origin
+            );
+
+            // close popup tab
+            window.close();
         }
+    }, [searchParams]);
 
-        const checkStatus = async () => {
-            try {
-                const res = await fetch(
-                    `/api/verify/digilocker/status?id=${verificationId}`
-                );
-                const data = await res.json();
-
-                if (data.status === "VALID") {
-                    toast.success("Identity verified successfully");
-                } else if (data.status === "FAILED") {
-                    toast.error("DigiLocker verification failed");
-                } else {
-                    toast("Verification still pending...");
-                }
-            } catch {
-                toast.error("Failed to verify identity");
-            } finally {
-                router.replace(
-                    `/onboarding?id=${onboardingId}&verification_id=${verificationId}`
-                );
-            }
-        };
-
-        checkStatus();
-    }, [router, searchParams]);
-
-    return <p className="text-center mt-10">Verifying your identity…</p>;
+    return <p className="text-center mt-10">Verification successful. Closing…</p>;
 }
-
-export default DigiLockerCallbackInner;

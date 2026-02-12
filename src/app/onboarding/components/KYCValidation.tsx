@@ -128,19 +128,55 @@ const KYCValidation = () => {
         const id = searchParams.get("verification_id");
         if (!id) return;
 
-        fetch(`/api/verify/digilocker/status?id=${id}`)
-            .then(res => res.json())
-            .then(data => {
+        const fetchStatus = async () => {
+            const res = await fetch(`/api/verify/digilocker/status?id=${id}`);
+            const data = await res.json();
+
+            if (data.status === "SUCCESS") {
+                setVerification(v => ({ ...v, aadhar: true }));
+
                 if (data.address) {
-                    setStreetAddress(data.address.line1 || "");
-                    setCity(data.address.city || "");
+                    setStreetAddress(data.address.house || "");
+                    setCity(data.address.vtc || "");
                     setState(data.address.state || "");
                     setPostalCode(data.address.pincode || "");
                 }
 
-                setVerification(v => ({ ...v, aadhar: true }));
-            });
+                toast.success("Aadhaar verified successfully");
+            }
+        };
+
+        fetchStatus();
     }, [searchParams]);
+
+    useEffect(() => {
+        const handler = async (event: MessageEvent) => {
+            if (event.origin !== window.location.origin) return;
+
+            if (event.data?.type === "DIGILOCKER_SUCCESS") {
+                const verificationId = event.data.verificationId;
+
+                const res = await fetch(`/api/verify/digilocker/status?id=${verificationId}`);
+                const data = await res.json();
+
+                if (data.status === "SUCCESS") {
+                    setVerification(v => ({ ...v, aadhar: true }));
+
+                    if (data.address) {
+                        setStreetAddress(data.address.house || "");
+                        setCity(data.address.vtc || "");
+                        setState(data.address.state || "");
+                        setPostalCode(data.address.pincode || "");
+                    }
+
+                    toast.success("Aadhaar verified successfully");
+                }
+            }
+        };
+
+        window.addEventListener("message", handler);
+        return () => window.removeEventListener("message", handler);
+    }, []);
 
 
     const billingCurrency = useMemo(() => {
@@ -198,31 +234,33 @@ const KYCValidation = () => {
         const loadingToast = toast.loading("Initializing DigiLocker verification...");
 
         try {
-            const res = await fetch("/api/verify/digilocker", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phone }), // Send phone if available
-            });
-
+            const res = await fetch("/api/verify/digilocker", { method: "POST" });
             const result = await res.json();
             toast.dismiss(loadingToast);
 
             if (result.url) {
-                // Open the verification URL
-                window.open(result.url, "_blank");
-                toast.success("Please complete verification in the new window");
-            } else if (result.success) {
-                setVerification(prev => ({ ...prev, aadhar: true }));
-                toast.success(result.message || "Identity verified via DigiLocker!");
+                // open centered popup
+                const width = 500;
+                const height = 650;
+                const left = window.screenX + (window.outerWidth - width) / 2;
+                const top = window.screenY + (window.outerHeight - height) / 2;
+
+                window.open(
+                    result.url,
+                    "digilocker",
+                    `width=${width},height=${height},left=${left},top=${top}`
+                );
+
+                toast.success("Complete verification in popup window");
             } else {
                 toast.error(result.error || "DigiLocker verification failed");
             }
         } catch (error) {
             toast.dismiss(loadingToast);
-            toast.error("Failed to initialize DigiLocker. Please try again.");
-            console.error("DigiLocker API error:", error);
+            toast.error("Failed to initialize DigiLocker.");
         }
     };
+
 
     const handleSubmit = async () => {
         if (!selectedCountry || !accountType || !streetAddress || !state || !city || !postalCode) {
