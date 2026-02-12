@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
+import { sendKycPendingEmail } from "@/lib/emails/sendKycPendingEmail";
 
 export async function POST(req: Request) {
     try {
@@ -34,10 +35,8 @@ export async function POST(req: Request) {
             gstVerified,
             cinVerified,
             aadharVerified,
-            digilockerRef,
         } = body;
 
-        // Basic validation
         if (!accountType || !country) {
             return NextResponse.json(
                 { error: "Missing required KYC fields" },
@@ -45,7 +44,7 @@ export async function POST(req: Request) {
             );
         }
 
-        // Create or update KYC profile
+        // Create update KYC profile always pending
         const kycProfile = await db.kycProfile.upsert({
             where: { userId: session.user.id },
             update: {
@@ -64,7 +63,6 @@ export async function POST(req: Request) {
                 gstVerified: !!gstVerified,
                 cinVerified: !!cinVerified,
                 aadharVerified: !!aadharVerified,
-                digilockerRef,
             },
             create: {
                 userId: session.user.id,
@@ -83,24 +81,26 @@ export async function POST(req: Request) {
                 gstVerified: !!gstVerified,
                 cinVerified: !!cinVerified,
                 aadharVerified: !!aadharVerified,
-                digilockerRef,
             },
         });
 
-        // LINK previous verification documents to this KYC
+        // Link verification docs → this KYC
         await db.verificationDocument.updateMany({
             where: {
                 userId: session.user.id,
-                kycProfileId: null, // only unlinked docs
+                kycProfileId: null,
             },
             data: {
                 kycProfileId: kycProfile.id,
             },
         });
 
+        //  Send KYC pending email
+        await sendKycPendingEmail(session.user.email, session.user.firstName);
+
         return NextResponse.json({
             success: true,
-            kycProfileId: kycProfile.id,
+            message: "KYC submitted and under review",
         });
 
     } catch (error) {

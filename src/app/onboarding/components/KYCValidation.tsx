@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { DashboardLayout } from "@/app/components/dashboard/DashboardLayout";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent } from "@/app/components/ui/card";
@@ -122,6 +122,26 @@ const KYCValidation = () => {
         detectCountry();
     }, [mounted]);
 
+    const searchParams = useSearchParams();
+
+    useEffect(() => {
+        const id = searchParams.get("verification_id");
+        if (!id) return;
+
+        fetch(`/api/verify/digilocker/status?id=${id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.address) {
+                    setStreetAddress(data.address.line1 || "");
+                    setCity(data.address.city || "");
+                    setState(data.address.state || "");
+                    setPostalCode(data.address.pincode || "");
+                }
+
+                setVerification(v => ({ ...v, aadhar: true }));
+            });
+    }, [searchParams]);
+
 
     const billingCurrency = useMemo(() => {
         return selectedCountry === "India" ? "INR" : "USD";
@@ -205,7 +225,6 @@ const KYCValidation = () => {
     };
 
     const handleSubmit = async () => {
-        // ---------- basic validation ----------
         if (!selectedCountry || !accountType || !streetAddress || !state || !city || !postalCode) {
             toast.error("Please fill all required fields");
             return;
@@ -216,39 +235,11 @@ const KYCValidation = () => {
             return;
         }
 
-        // ---------- enterprise validation ----------
-        if (accountType === "enterprise") {
-            if (!companyName) {
-                toast.error("Please enter company name");
-                return;
-            }
-
-            if (!businessType) {
-                toast.error("Please select business type");
-                return;
-            }
-
-            if (isIndian) {
-                const requiresCIN = ["private_limited", "public_limited", "llp", "opc"].includes(businessType);
-
-                if (requiresCIN && !verification.cin) {
-                    toast.error("Please verify CIN for your business type");
-                    return;
-                }
-
-                if (requiresGST && !verification.gst) {
-                    toast.error("Please verify GST for Office/Work address");
-                    return;
-                }
-
-                if (!verification.aadhar) {
-                    toast.error("Please verify Aadhar for Enterprise account");
-                    return;
-                }
-            }
+        if (accountType === "enterprise" && isIndian && !verification.aadhar) {
+            toast.error("Please verify Aadhaar for Enterprise account");
+            return;
         }
 
-        // ---------- individual validation ----------
         if (accountType === "individual" && isIndian && !verification.aadhar) {
             toast.error("Please verify your identity with DigiLocker");
             return;
@@ -257,65 +248,38 @@ const KYCValidation = () => {
         setIsSubmitting(true);
 
         try {
-            // =========================================================
-            // STEP 1 SAVE KYC PROFILE
-            // =========================================================
-            const saveRes = await fetch("/api/onboarding/submit", {
+            const res = await fetch("/api/onboarding/submit", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     accountType,
-                    firstName: email ? email.split("@")[0] : "", // adjust if you have real name fields
-                    lastName: "",
-                    email,
-                    phone,
                     country: selectedCountry,
-
                     state,
                     city,
                     postalCode,
                     streetAddress,
-
                     companyName,
                     businessType,
-
                     gstVerified: verification.gst,
                     cinVerified: verification.cin,
                     aadharVerified: verification.aadhar,
                 }),
             });
 
-            const saveData = await saveRes.json();
+            const data = await res.json();
 
-            if (!saveRes.ok) {
-                toast.error(saveData.error || "Failed to save KYC");
+            if (!res.ok) {
+                toast.error(data.error || "Failed to submit KYC");
                 return;
             }
 
-            // =========================================================
-            // STEP 2 CREATE WHMCS CLIENT
-            // =========================================================
-            const whmcsRes = await fetch("/api/whmcs/create-client", {
-                method: "POST",
-            });
-
-            const whmcsData = await whmcsRes.json();
-
-            if (!whmcsRes.ok) {
-                toast.error(whmcsData.error || "Failed to create WHMCS client");
-                return;
-            }
-
-            // =========================================================
-            // SUCCESS
-            // =========================================================
-            toast.success("KYC completed & client created successfully!");
+            toast.success("KYC submitted successfully. It will be reviewed in 2–3 business days.");
 
             router.push("/dashboard");
 
         } catch (err) {
-            console.error("Onboarding submit error:", err);
-            toast.error("Something went wrong during onboarding");
+            console.error("Submit error:", err);
+            toast.error("Something went wrong");
         } finally {
             setIsSubmitting(false);
         }

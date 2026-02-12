@@ -114,6 +114,8 @@ model KycProfile {
   userId      Int    @unique
   accountType String
 
+  status String @default("pending")
+
   firstName String
   lastName  String
   email     String

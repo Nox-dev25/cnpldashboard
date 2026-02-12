@@ -11,9 +11,12 @@ export default function DigiLockerCallback() {
     useEffect(() => {
         const verificationId = searchParams.get("verification_id");
 
-        if (!verificationId) {
-            toast.error("Missing verification reference");
-            router.push("/onboarding");
+        // onboarding UUID we stored before opening DigiLocker
+        const onboardingId = localStorage.getItem("onboardingId");
+
+        if (!verificationId || !onboardingId) {
+            toast.error("Verification session expired");
+            router.replace("/dashboard");
             return;
         }
 
@@ -29,12 +32,15 @@ export default function DigiLockerCallback() {
                 } else if (data.status === "FAILED") {
                     toast.error("DigiLocker verification failed");
                 } else {
-                    toast("Verification still pending. Please wait...");
+                    toast("Verification still pending...");
                 }
-            } catch (err) {
+            } catch {
                 toast.error("Failed to verify identity");
             } finally {
-                router.push("/onboarding");
+                // redirect WITH params so onboarding can autofill address
+                router.replace(
+                    `/onboarding?id=${onboardingId}&verification_id=${verificationId}`
+                );
             }
         };
 

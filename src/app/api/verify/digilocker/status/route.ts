@@ -12,6 +12,8 @@ export async function GET(req: NextRequest) {
         const statusResult = await cashfreeClient.getDigiLockerStatus(verificationId);
 
         if (statusResult.status === "VALID") {
+            const address = statusResult.data?.address || {};
+
             await db.verificationDocument.updateMany({
                 where: { cashfreeRefId: verificationId },
                 data: {
@@ -19,6 +21,12 @@ export async function GET(req: NextRequest) {
                     extractedData: statusResult.data,
                     verifiedAt: new Date(),
                 },
+            });
+
+            return NextResponse.json({
+                success: true,
+                status: "VALID",
+                address,
             });
         }
 

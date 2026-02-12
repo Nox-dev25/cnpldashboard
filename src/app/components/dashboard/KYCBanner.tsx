@@ -78,6 +78,7 @@ export function KYCBanner({ userName = "User" }: KYCBannerProps) {
       }
 
       if (res.ok) {
+        localStorage.setItem("onboardingId", data.onboardingUuid);
         window.location.href = `/onboarding?id=${data.onboardingUuid}`;
       }
     } catch (err) {
